@@ -84,14 +84,16 @@
         </div>
 
         <!-- Memo Column -->
-        <div class="memo-col" @click="$emit('memoClick', day.dateStr)">
-          <div class="memo-lines">
-            <div class="memo-line" v-for="n in 3" :key="n"></div>
-          </div>
-          <div class="memos-list">
-            <div v-for="memo in day.memos" :key="memo.id" class="notebook-memo">
-              {{ memo.title }}
-            </div>
+        <div class="memo-col">
+          <div class="memo-input-area">
+            <textarea
+              class="memo-inline-input"
+              placeholder="Write memo..."
+              :value="getDayMemo(day)?.title || ''"
+              @input="onMemoInput($event, day)"
+              @blur="onMemoSave(day)"
+              @keydown.enter.prevent="onMemoSave(day)"
+            ></textarea>
           </div>
         </div>
       </div>
@@ -100,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 
 const props = defineProps<{
@@ -109,9 +111,49 @@ const props = defineProps<{
   memos: any[];
 }>();
 
-const emit = defineEmits(["dayClick", "timeClick", "memoClick"]);
+const emit = defineEmits([
+  "dayClick",
+  "timeClick",
+  "memoClick",
+  "createMemo",
+  "updateMemo",
+]);
 const { t, locale } = useI18n();
 
+// Temporary storage for edits before save
+const memoEdits = ref<Record<string, string>>({});
+
+const getDayMemo = (day: any) => {
+  if (day.memos && day.memos.length > 0) {
+    return day.memos[0];
+  }
+  return null;
+};
+
+const onMemoInput = (e: any, day: any) => {
+  memoEdits.value[day.dateStr] = e.target.value;
+};
+
+const onMemoSave = (day: any) => {
+  const val = memoEdits.value[day.dateStr];
+  // If undefined, it means no change happened
+  if (val === undefined) return;
+
+  const existing = getDayMemo(day);
+  if (existing) {
+    // Update
+    emit("updateMemo", { id: existing.id, content: val, date: day.dateStr });
+    // Update local object immediately for responsiveness? (Parent will reload)
+  } else {
+    // Create
+    if (val.trim()) {
+      emit("createMemo", { date: day.dateStr, content: val });
+    }
+  }
+  delete memoEdits.value[day.dateStr];
+};
+
+// ... (rest of script) ...
 // Config for Timeline
 const START_HOUR = 6;
 const END_HOUR = 24;
@@ -391,23 +433,37 @@ const currentYear = computed(() => props.currentDate.getFullYear());
   padding: 10px;
   position: relative;
   background: #fafcf5;
-}
-.memo-lines {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
-  pointer-events: none;
 }
-.memo-line {
-  border-bottom: 1px dashed #dcdcdc;
-  margin: 0 10px;
-  width: calc(100% - 20px);
+
+.memo-input-area {
+  flex-grow: 1;
 }
+
+.memo-inline-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font-family: "Nanum Pen Script", "Noto Serif JP", cursive, serif;
+  font-size: 1rem;
+  color: #555;
+  outline: none;
+  resize: none;
+  line-height: 1.5rem;
+  background-image: linear-gradient(transparent 95%, #ddd 95%);
+  background-size: 100% 1.5rem;
+  padding: 0;
+}
+.memo-inline-input:focus {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.memos-list {
+  margin-top: 5px;
+}
+
 .notebook-memo {
   font-size: 0.85rem;
   color: #555;
@@ -415,6 +471,11 @@ const currentYear = computed(() => props.currentDate.getFullYear());
   margin-bottom: 4px;
   padding: 2px 4px;
   border-radius: 2px;
+  cursor: pointer;
+}
+.notebook-memo:hover {
+  background: #fff;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .weekend-sun .date-col {

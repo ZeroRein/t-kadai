@@ -36,6 +36,8 @@
         @dayClick="handleNotebookDateClick"
         @timeClick="handleNotebookTimeClick"
         @memoClick="handleNotebookMemoClick"
+        @createMemo="handleCreateMemo"
+        @updateMemo="handleUpdateMemo"
       />
     </div>
 
@@ -211,6 +213,47 @@ const handleNotebookMemoClick = (dateStr: string) => {
   showModal.value = true;
 };
 
+const handleCreateMemo = async (payload: { date: string; content: string }) => {
+  try {
+    await axios.post("/api/memos", {
+      Title: payload.content, // Use content as title for quick memos
+      Content: payload.content,
+      LinkedDate: new Date(payload.date).toISOString(),
+      ThemeColor: "#ffba00",
+    });
+    fetchData();
+  } catch (e) {
+    console.error(e);
+    alert("Failed to save memo");
+  }
+};
+
+const handleUpdateMemo = async (payload: {
+  id: number;
+  content: string;
+  date: string;
+}) => {
+  try {
+    // Fetch existing first to get full object? Or just PATCH.
+    // Assuming we need to send full object for now or backend supports partial.
+    // Let's rely on finding it in our local list first to be safe, or just PUT.
+    // Actually PUT /api/memos/:id typically expects full object.
+    const memo = memoList.value.find((m) => m.id === payload.id);
+    if (memo) {
+      await axios.put(`/api/memos/${payload.id}`, {
+        ID: payload.id,
+        Title: payload.content,
+        Content: payload.content,
+        LinkedDate: new Date(payload.date).toISOString(),
+        ThemeColor: "#ffba00",
+      });
+      fetchData();
+    }
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 const switchView = (mode: string) => {
   viewMode.value = mode;
   if (mode === "calendar") {
@@ -318,12 +361,22 @@ onMounted(() => {
 }
 .view-switcher .btn {
   margin-left: 10px;
-  background: #eee;
-  color: #333;
+  background: linear-gradient(to bottom, #5d4037, #3e2723);
+  color: #d7ccc8;
+  border: 1px solid #2e1c16;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  font-family: "Cinzel", serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 .view-switcher .btn.active {
-  background: #4a90e2;
-  color: white;
+  background: linear-gradient(to bottom, #ffb300, #ff6f00);
+  color: #3e2723;
+  border: 1px solid #ff6f00;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3);
+  font-weight: bold;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 .notebook-nav {
   display: flex;

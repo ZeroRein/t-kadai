@@ -9,14 +9,12 @@ body {
   margin: 0;
   font-family: "Noto Serif JP", serif;
   color: var(--text-color);
-  background: #d4b483; /* Fallback */
-  background-image: 
-    linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px),
-    linear-gradient(rgba(0,0,0,0.05) 2px, transparent 2px),
-    linear-gradient(90deg, rgba(0,0,0,0.05) 2px, transparent 2px); /* Simple wooden-ish texture or just color */
-  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
-  background-color: #deb887; /* Burlywood/Desk color */
+  background: #3e2723;
+  background-image: url("/wood_bg.png"); /* Generated Wood Texture */
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-position: center;
 }
 
 header {

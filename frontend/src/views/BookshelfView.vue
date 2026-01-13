@@ -17,6 +17,17 @@
         >
           <div class="spine-decor top"></div>
           <div class="spine-title">{{ memo.Title }}</div>
+          <div class="spine-date">
+            {{ formatDateShort(memo.LinkedDate || memo.UpdatedAt) }}
+          </div>
+          <div class="spine-decor bottom"></div>
+        </div>
+
+        <!-- NEW MEMO BOOK -->
+        <div class="book-spine new-book" @click="openNewBook">
+          <div class="spine-decor top"></div>
+          <div class="spine-title">+</div>
+          <div class="spine-date">{{ $t("bookshelf.new") || "NEW" }}</div>
           <div class="spine-decor bottom"></div>
         </div>
       </div>
@@ -27,35 +38,65 @@
       </div>
     </div>
 
-    <!-- Open Book Modal -->
     <div v-if="selectedMemo" class="book-overlay" @click.self="closeBook">
       <div class="open-book-container">
         <div class="open-book">
-          <!-- Left Page -->
-          <div class="page left-page">
-            <div class="page-content">
-              <h2>{{ selectedMemo.Title }}</h2>
-              <div class="meta-info">
-                <span
-                  >📅
-                  {{
-                    formatDate(
-                      selectedMemo.LinkedDate || selectedMemo.UpdatedAt
-                    )
-                  }}</span
-                >
-              </div>
-              <hr class="separator" />
-              <div class="decor-stamp">📝</div>
-            </div>
-          </div>
-
-          <!-- Right Page -->
+          <!-- STATIC RIGHT PAGE (Page 1, visible when cover opens) -->
           <div class="page right-page">
             <div class="page-content">
-              <p class="handwritten-text">{{ selectedMemo.Content }}</p>
+              <!-- Content for Right Page -->
+              <textarea
+                v-model="editingContent"
+                class="handwritten-textarea"
+                placeholder="Write your memo here..."
+              ></textarea>
+            </div>
+            <div class="page-actions">
+              <button class="btn-save" @click="saveMemo">SAVE</button>
             </div>
             <div class="page-number">- 1 -</div>
+          </div>
+
+          <!-- ANIMATING LEFT PAGE (front=Cover, back=InnerLeft) -->
+          <div class="page left-page-assembly">
+            <!-- FRONT FACE: The Cover -->
+            <div class="face front-face" :style="getCoverStyle(selectedMemo)">
+              <div class="cover-design">
+                <div class="spine-decor top"></div>
+                <div class="cover-title">{{ selectedMemo.Title }}</div>
+                <div class="spine-decor bottom"></div>
+              </div>
+            </div>
+
+            <!-- BACK FACE: The Inner Left Page -->
+            <div class="face back-face">
+              <div class="page-content">
+                <!-- Title Editable -->
+                <div v-if="!selectedMemo.ID" class="new-title-input-wrapper">
+                  <input
+                    v-model="selectedMemo.Title"
+                    placeholder="Title..."
+                    class="new-title-input"
+                  />
+                </div>
+                <h2 v-else>{{ selectedMemo.Title }}</h2>
+
+                <div class="meta-info">
+                  <span
+                    >📅
+                    {{
+                      formatDate(
+                        selectedMemo.LinkedDate ||
+                          selectedMemo.UpdatedAt ||
+                          new Date()
+                      )
+                    }}</span
+                  >
+                </div>
+                <hr class="separator" />
+                <div class="decor-stamp">📝</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -71,6 +112,8 @@ import { useI18n } from "vue-i18n";
 const { t } = useI18n();
 const memos = ref<any[]>([]);
 const selectedMemo = ref<any>(null);
+
+const editingContent = ref("");
 
 async function fetchMemos() {
   try {
@@ -95,29 +138,94 @@ const COLORS = [
 function getBookStyle(memo: any) {
   const seed = (memo.ID || 0) + (memo.Title ? memo.Title.length : 0);
   const color = COLORS[seed % COLORS.length];
-  // Size to match reference image (Small/Short books on large shelf)
-  const height = 120 + (seed % 40) + "px";
-  const width = 40 + (seed % 15) + "px";
+  // Fixed size as requested
+  const height = "140px";
+  const width = "45px";
 
   return {
     backgroundColor: color,
     height: height,
     width: width,
-    backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.1) 10%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.3) 100%)`, // Simpler dark binding
+    backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.1) 10%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.3) 100%)`,
+  };
+}
+
+function getCoverStyle(memo: any) {
+  if (!memo.ID && memo.Title === "New Memo") {
+    return {
+      backgroundColor: "#5d4037",
+      backgroundImage: `url("https://www.transparenttextures.com/patterns/wood-pattern.png")`, // Leather texture feel
+      border: "2px solid #3e2723",
+    };
+  }
+  const seed = (memo.ID || 0) + (memo.Title ? memo.Title.length : 0);
+  const color = COLORS[seed % COLORS.length];
+  return {
+    backgroundColor: color,
+    backgroundImage: `linear-gradient(to bottom right, rgba(255,255,255,0.1), rgba(0,0,0,0.2))`,
+    boxShadow: "inset 0 0 20px rgba(0,0,0,0.5)",
   };
 }
 
 function openBook(memo: any) {
-  selectedMemo.value = memo;
+  selectedMemo.value = { ...memo }; // Clone to avoid direct mutation
+  editingContent.value = memo.Content;
+}
+
+function openNewBook() {
+  selectedMemo.value = {
+    Title: "New Memo",
+    Content: "",
+    ThemeColor: "#8d6e63",
+  };
+  editingContent.value = "";
 }
 
 function closeBook() {
   selectedMemo.value = null;
+  editingContent.value = "";
+}
+
+async function saveMemo() {
+  if (!selectedMemo.value) return;
+
+  try {
+    // CREATE
+    if (!selectedMemo.value.ID) {
+      await axios.post("/api/memos", {
+        Title: selectedMemo.value.Title,
+        Content: editingContent.value,
+        // Default to today if new
+        LinkedDate: new Date().toISOString(),
+        ThemeColor: "#8d6e63",
+      });
+    }
+    // UPDATE
+    else {
+      await axios.put(`/api/memos/${selectedMemo.value.ID}`, {
+        ...selectedMemo.value,
+        Content: editingContent.value,
+      });
+    }
+
+    alert("Saved!");
+    closeBook();
+    fetchMemos();
+  } catch (e) {
+    console.error(e);
+    alert("Failed to save");
+  }
 }
 
 function formatDate(dateStr: string) {
   if (!dateStr) return "";
   return new Date(dateStr).toLocaleDateString();
+}
+
+function formatDateShort(dateStr: string) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 onMounted(() => {
@@ -231,6 +339,18 @@ onMounted(() => {
   box-shadow: 0 1px 0 rgba(255, 215, 0, 0.5) inset,
     0 -1px 0 rgba(255, 215, 0, 0.5) inset;
 }
+.spine-date {
+  position: absolute;
+  bottom: 5px; /* Above the bottom decor */
+  font-size: 0.7rem;
+  writing-mode: horizontal-tb; /* Horizontal text */
+  width: 100%;
+  text-align: center;
+  color: #a1887f;
+  font-family: sans-serif;
+  letter-spacing: 0;
+  z-index: 5;
+}
 .spine-decor.bottom {
   bottom: 30px;
   border-top: 1px solid rgba(0, 0, 0, 0.5);
@@ -260,59 +380,92 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  perspective: 1500px;
+  perspective: 2500px; /* Higher perspective for better top-down feel */
 }
 
 .open-book-container {
-  animation: bookEntrance 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: containerAppear 0.5s ease-out forwards;
 }
 
 .open-book {
   width: 800px;
   height: 500px;
-  background: #fdf5e6;
-  display: flex;
-  border-radius: 5px;
-  box-shadow: 10px 10px 30px rgba(0, 0, 0, 0.5);
   position: relative;
-}
-/* Binding in the middle */
-.open-book::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 40px;
-  margin-left: -20px;
-  background: linear-gradient(
-    to right,
-    rgba(0, 0, 0, 0.1),
-    rgba(0, 0, 0, 0.2) 40%,
-    rgba(0, 0, 0, 0.2) 60%,
-    rgba(0, 0, 0, 0.1)
-  );
-  z-index: 10;
-  border-radius: 5px;
+  /* No transform-style on container needed unless we rotate it whole */
 }
 
+/* Base Page Style */
 .page {
-  flex: 1;
+  position: absolute;
+  top: 0;
+  right: 0; /* Align to right side (since closed book is just the right stack) */
+  width: 50%;
+  height: 100%;
+}
+
+/* STATICE RIGHT PAGE */
+.right-page {
+  z-index: 1;
+  background: linear-gradient(to right, #e8dfc5 0%, #fff 100%);
+  border-radius: 0 5px 5px 0;
+  box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.3);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ANIMATING LEFT ASSEMBLY (The Cover/Left Page) */
+.left-page-assembly {
+  z-index: 10;
+  transform-style: preserve-3d;
+  transform-origin: left center; /* Pivot on Spine (Left edge of Right-aligned element) */
+  animation: coverFlip 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  /* Start closed (0deg) */
+}
+
+.face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 0 5px 5px 0; /* Matches Right Page shape initially */
+}
+
+/* FRONT FACE: The Cover (Visible initially) */
+.front-face {
+  z-index: 5;
+  border-radius: 0 5px 5px 0; /* Matches right page shape */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  /* Styling provided by inline style */
+}
+.cover-design {
+  text-align: center;
+  width: 80%;
+  border: 2px solid rgba(255, 215, 0, 0.5);
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.2);
+}
+.cover-title {
+  font-family: "Cinzel", serif;
+  font-size: 2rem;
+  color: #e6c229; /* Gold */
+  text-shadow: 2px 2px 4px black;
+}
+
+/* BACK FACE: The Inner Left Page (Visible after flip) */
+.back-face {
+  z-index: 4;
+  transform: rotateY(180deg); /* Facing opposite way */
+  background: linear-gradient(to left, #e8dfc5 0%, #fffbf0 100%);
+  border-radius: 5px 0 0 5px; /* Rounded on LEFT now */
   padding: 40px;
   color: #333;
-  position: relative;
-  background: linear-gradient(to right, #fffbf0 0%, #fff 100%);
-  box-shadow: inset -5px 0 10px rgba(0, 0, 0, 0.05); /* Paper curve */
-}
-.left-page {
-  border-radius: 5px 0 0 5px;
-  text-align: right;
-  border-right: 1px solid #eee;
-  background: linear-gradient(to left, #f5f5f5 0%, #fffbf0 100%);
-}
-.right-page {
-  border-radius: 0 5px 5px 0;
-  text-align: left;
+  box-shadow: inset -5px 0 10px rgba(0, 0, 0, 0.05);
 }
 
 .page-content {
@@ -320,11 +473,60 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-.handwritten-text {
+/* Animation Keyframes */
+@keyframes containerAppear {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes coverFlip {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(-180deg);
+  }
+}
+
+.handwritten-textarea {
+  width: 100%;
+  height: 90%;
+  border: none;
+  background: transparent;
   font-family: "Nanum Pen Script", cursive, sans-serif;
   font-size: 1.5rem;
   line-height: 1.6;
   color: #2c3e50;
+  outline: none;
+  resize: none;
+  background-image: linear-gradient(transparent 95%, #eee 95%);
+  background-size: 100% 1.6em;
+}
+
+.page-actions {
+  margin-top: 10px;
+  text-align: right;
+}
+
+.btn-save {
+  background: #5d4037;
+  color: #d7ccc8;
+  border: 1px solid #3e2723;
+  padding: 5px 15px;
+  font-family: "Cinzel", serif;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+.btn-save:hover {
+  background: #3e2723;
+  color: white;
 }
 
 .separator {
@@ -343,14 +545,69 @@ onMounted(() => {
   left: 0;
 }
 
-@keyframes bookEntrance {
+@keyframes containerZoom {
   0% {
-    transform: translateY(100px) rotateX(60deg) scale(0.5);
+    transform: scale(0.1) translateY(200px);
     opacity: 0;
   }
   100% {
-    transform: translateY(0) rotateX(0) scale(1);
+    transform: scale(1) translateY(0);
     opacity: 1;
   }
+}
+
+@keyframes openLeft {
+  0% {
+    transform: rotateY(-110deg);
+    box-shadow: 10px 0 20px rgba(0, 0, 0, 0.5);
+  }
+  100% {
+    transform: rotateY(0deg);
+    box-shadow: -5px 5px 15px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@keyframes openRight {
+  0% {
+    transform: rotateY(110deg);
+    box-shadow: -10px 0 20px rgba(0, 0, 0, 0.5);
+  }
+  100% {
+    transform: rotateY(0deg);
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@keyframes contentFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.new-book {
+  background-color: #5d4037;
+  border: 1px dashed #d7ccc8;
+  color: #ffe0b2;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  height: 140px; /* Fixed height since we didn't use getBookStyle for it */
+  width: 45px;
+}
+.new-book:hover {
+  opacity: 1;
+  transform: translateY(-5px) scale(1.02);
+}
+.new-title-input {
+  width: 100%;
+  font-size: 1.5rem;
+  font-family: inherit;
+  border: none;
+  border-bottom: 2px dashed #aaa;
+  background: transparent;
+  text-align: right;
+  outline: none;
 }
 </style>
