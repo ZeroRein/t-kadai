@@ -8,7 +8,7 @@ export default defineConfig({
     host: true,
     proxy: {
       "/api": {
-        target: "http://app:8080",
+        target: "http://localhost:8080",
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, '') // backend handles /api group
       },

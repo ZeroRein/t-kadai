@@ -8,7 +8,7 @@
           :class="{ active: viewMode === 'notebook' }"
           @click="switchView('notebook')"
         >
-          Notebook
+          {{ $t("calendar.notebook") }}
         </button>
         <button
           class="btn"
@@ -284,7 +284,7 @@ function handleEventClick(arg: any) {
     t("event.alert") +
       arg.event.title +
       "\n" +
-      (arg.event.extendedProps.description || "")
+      (arg.event.extendedProps.description || ""),
   );
 }
 
@@ -333,7 +333,7 @@ async function fetchData() {
       .filter((m: any) => m.LinkedDate)
       .map((m: any) => ({
         id: m.ID,
-        title: "📝 " + m.Title,
+        title: m.Title,
         start: m.LinkedDate,
         color: "#ff9f43",
         extendedProps: { description: m.Content },
@@ -364,7 +364,8 @@ onMounted(() => {
   background: linear-gradient(to bottom, #5d4037, #3e2723);
   color: #d7ccc8;
   border: 1px solid #2e1c16;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1),
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 2px 4px rgba(0, 0, 0, 0.4);
   font-family: "Cinzel", serif;
   text-transform: uppercase;
@@ -374,7 +375,9 @@ onMounted(() => {
   background: linear-gradient(to bottom, #ffb300, #ff6f00);
   color: #3e2723;
   border: 1px solid #ff6f00;
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset 0 0 10px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.3);
   font-weight: bold;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 }

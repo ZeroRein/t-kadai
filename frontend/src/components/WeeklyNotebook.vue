@@ -205,7 +205,7 @@ const getWeekDays = (baseDate: Date) => {
     d.setDate(monday.getDate() + i);
 
     const dayEvents = props.events.filter((e) =>
-      isSameDay(new Date(e.start), d)
+      isSameDay(new Date(e.start), d),
     );
     const dayMemos = props.memos.filter((m) => isSameDay(new Date(m.start), d));
 
@@ -253,7 +253,8 @@ const currentYear = computed(() => props.currentDate.getFullYear());
   border: 1px solid #dcdcdc;
   /* Book Look: Rounded right corners, shadow */
   border-radius: 2px 10px 10px 2px;
-  box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.3),
+  box-shadow:
+    5px 5px 15px rgba(0, 0, 0, 0.3),
     /* Main shadow */ 1px 0px 0px #aaa inset; /* Inner edge */
   max-width: 100%;
   position: relative;
@@ -454,7 +455,8 @@ const currentYear = computed(() => props.currentDate.getFullYear());
   line-height: 1.5rem;
   background-image: linear-gradient(transparent 95%, #ddd 95%);
   background-size: 100% 1.5rem;
-  padding: 0;
+  padding: 6px 0 0 4px; /* Shift text to align with line */
+  box-sizing: border-box;
 }
 .memo-inline-input:focus {
   background-color: rgba(255, 255, 255, 0.4);

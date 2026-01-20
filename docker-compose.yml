@@ -21,6 +21,9 @@ services:
     environment:
       DATABASE_URL: postgres://user:password@db:5432/calendar_db?sslmode=disable
       PORT: 8080
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "8080:8080"
     depends_on:
       - db
     restart: always

@@ -27,7 +27,7 @@
         <div class="book-spine new-book" @click="openNewBook">
           <div class="spine-decor top"></div>
           <div class="spine-title">+</div>
-          <div class="spine-date">{{ $t("bookshelf.new") || "NEW" }}</div>
+          <div class="spine-date">{{ $t("bookshelf.new") }}</div>
           <div class="spine-decor bottom"></div>
         </div>
       </div>
@@ -48,11 +48,13 @@
               <textarea
                 v-model="editingContent"
                 class="handwritten-textarea"
-                placeholder="Write your memo here..."
+                :placeholder="$t('bookshelf.contentPlaceholder')"
               ></textarea>
             </div>
             <div class="page-actions">
-              <button class="btn-save" @click="saveMemo">SAVE</button>
+              <button class="btn-save" @click="saveMemo">
+                {{ $t("bookshelf.save") }}
+              </button>
             </div>
             <div class="page-number">- 1 -</div>
           </div>
@@ -75,7 +77,7 @@
                 <div v-if="!selectedMemo.ID" class="new-title-input-wrapper">
                   <input
                     v-model="selectedMemo.Title"
-                    placeholder="Title..."
+                    :placeholder="$t('bookshelf.titlePlaceholder')"
                     class="new-title-input"
                   />
                 </div>
@@ -88,13 +90,12 @@
                       formatDate(
                         selectedMemo.LinkedDate ||
                           selectedMemo.UpdatedAt ||
-                          new Date()
+                          new Date(),
                       )
                     }}</span
                   >
                 </div>
                 <hr class="separator" />
-                <div class="decor-stamp">📝</div>
               </div>
             </div>
           </div>
@@ -293,7 +294,9 @@ onMounted(() => {
   border-radius: 3px 3px 3px 3px;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
   cursor: pointer;
-  transition: transform 0.2s, margin 0.2s;
+  transition:
+    transform 0.2s,
+    margin 0.2s;
   color: #d4af37; /* Gold Text */
   font-family: "Noto Serif JP", serif;
   writing-mode: vertical-rl;
@@ -336,7 +339,8 @@ onMounted(() => {
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   height: 10px;
   background: transparent;
-  box-shadow: 0 1px 0 rgba(255, 215, 0, 0.5) inset,
+  box-shadow:
+    0 1px 0 rgba(255, 215, 0, 0.5) inset,
     0 -1px 0 rgba(255, 215, 0, 0.5) inset;
 }
 .spine-date {
@@ -357,7 +361,8 @@ onMounted(() => {
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   height: 10px;
   background: transparent;
-  box-shadow: 0 1px 0 rgba(255, 215, 0, 0.5) inset,
+  box-shadow:
+    0 1px 0 rgba(255, 215, 0, 0.5) inset,
     0 -1px 0 rgba(255, 215, 0, 0.5) inset;
 }
 
@@ -469,7 +474,8 @@ onMounted(() => {
 }
 
 .page-content {
-  height: 100%;
+  flex: 1;
+  min-height: 0; /* Firefox flex fix */
   overflow-y: auto;
 }
 
@@ -496,7 +502,7 @@ onMounted(() => {
 
 .handwritten-textarea {
   width: 100%;
-  height: 90%;
+  height: 100%;
   border: none;
   background: transparent;
   font-family: "Nanum Pen Script", cursive, sans-serif;
@@ -507,6 +513,8 @@ onMounted(() => {
   resize: none;
   background-image: linear-gradient(transparent 95%, #eee 95%);
   background-size: 100% 1.6em;
+  padding: 14px 10px 0 55px; /* Moved further away from center (spine) */
+  box-sizing: border-box;
 }
 
 .page-actions {

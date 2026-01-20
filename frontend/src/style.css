@@ -29,6 +29,22 @@ header {
   font-family: "Cinzel", "Noto Serif JP", serif;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.home-btn {
+  background: #5d4037;
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 nav a {
   color: #d7ccc8;
   text-decoration: none;

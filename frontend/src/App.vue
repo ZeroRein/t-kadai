@@ -8,7 +8,10 @@
       <router-link to="/calendar">{{ $t("nav.calendar") }}</router-link>
       <router-link to="/bookshelf">{{ $t("nav.bookshelf") }}</router-link>
     </nav>
-    <div class="lang-switch">
+    <div class="header-actions">
+      <router-link to="/" class="btn home-btn"
+        >🏠 {{ $t("nav.home") }}</router-link
+      >
       <button @click="toggleLang" class="btn">{{ $t("nav.lang") }}</button>
     </div>
   </header>
