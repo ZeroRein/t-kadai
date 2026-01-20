@@ -17,8 +17,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// --- Models ---
+// --- Models (データモデル) ---
 
+// User: ユーザー情報を格納する構造体
 type User struct {
 	ID           uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
 	Username     string    `gorm:"uniqueIndex"`
@@ -27,41 +28,45 @@ type User struct {
 	CreatedAt    time.Time
 }
 
+// Event: カレンダーの予定情報を格納する構造体
 type Event struct {
 	ID          uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
 	UserID      uuid.UUID
-	Title       string
-	StartTime   time.Time
-	EndTime     time.Time
-	Description string
-	Color       string
+	Title       string    // 予定のタイトル
+	StartTime   time.Time // 開始日時
+	EndTime     time.Time // 終了日時
+	Description string    // 詳細説明
+	Color       string    // 表示色
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
+// Memo: 日々のメモ（日記やフリーメモ）を格納する構造体
 type Memo struct {
 	ID         uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
 	UserID     uuid.UUID
-	Title      string
-	Content    string
-	LinkedDate *time.Time // Nullable
-	ThemeColor string
+	Title      string     // メモのタイトル
+	Content    string     // メモの内容
+	LinkedDate *time.Time // カレンダーの日付とリンクする場合の日付 (NULL可)
+	ThemeColor string     // 本棚に表示する際の色
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
 
-// --- Database ---
+// --- Database (データベース設定) ---
 
 var db *gorm.DB
 
+// initDB: データベース接続の初期化とマイグレーションを実行
 func initDB() {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
+		// 環境変数が設定されていない場合のデフォルト接続文字列
 		dsn = "host=db user=user password=password dbname=calendar_db port=5432 sslmode=disable TimeZone=Asia/Tokyo"
 	}
 
 	var err error
-	// Retry connection
+	// データベース接続のリトライ処理 (最大10回)
 	for i := 0; i < 10; i++ {
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err == nil {
@@ -74,22 +79,24 @@ func initDB() {
 		log.Fatal("Could not connect to database")
 	}
 
-	// Auto Migrate
+	// Auto Migrate: 定義した構造体を元にデータベースのテーブルを自動作成・更新
 	err = db.AutoMigrate(&User{}, &Event{}, &Memo{})
 	if err != nil {
 		log.Fatal("Migration failed:", err)
 	}
 }
 
-// --- Handlers ---
+// --- Handlers (APIハンドラー) ---
 
+// getEvents: 全ての予定を取得する
 func getEvents(c *gin.Context) {
 	var events []Event
-	// Simple fetch all for now, ideally filter by date range
+	// 現状は全ての予定を取得していますが、理想的には日付範囲でフィルタリングすべきです
 	db.Find(&events)
 	c.JSON(http.StatusOK, events)
 }
 
+// createEvent: 新しい予定を作成する
 func createEvent(c *gin.Context) {
 	var event Event
 	if err := c.ShouldBindJSON(&event); err != nil {
@@ -98,12 +105,13 @@ func createEvent(c *gin.Context) {
 	}
 	event.CreatedAt = time.Now()
 	event.UpdatedAt = time.Now()
-	// user_id hardcoded for now or from context
+	// user_id は認証機能実装後にコンテキストから取得するように修正が必要
 	// event.UserID = ...
 	db.Create(&event)
 	c.JSON(http.StatusOK, event)
 }
 
+// updateEvent: 既存の予定を更新する
 func updateEvent(c *gin.Context) {
 	id := c.Param("id")
 	var event Event
@@ -120,18 +128,21 @@ func updateEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, event)
 }
 
+// deleteEvent: 予定を削除する
 func deleteEvent(c *gin.Context) {
 	id := c.Param("id")
 	db.Delete(&Event{}, "id = ?", id)
 	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 }
 
+// getMemos: 全てのメモを取得する (更新日時順)
 func getMemos(c *gin.Context) {
 	var memos []Memo
 	db.Order("updated_at desc").Find(&memos)
 	c.JSON(http.StatusOK, memos)
 }
 
+// createMemo: 新しいメモを作成する
 func createMemo(c *gin.Context) {
 	var memo Memo
 	if err := c.ShouldBindJSON(&memo); err != nil {
@@ -144,6 +155,7 @@ func createMemo(c *gin.Context) {
 	c.JSON(http.StatusOK, memo)
 }
 
+// updateMemo: 既存のメモを更新する
 func updateMemo(c *gin.Context) {
 	id := c.Param("id")
 	var memo Memo
@@ -160,13 +172,14 @@ func updateMemo(c *gin.Context) {
 	c.JSON(http.StatusOK, memo)
 }
 
+// deleteMemo: メモを削除する
 func deleteMemo(c *gin.Context) {
 	id := c.Param("id")
 	db.Delete(&Memo{}, "id = ?", id)
 	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 }
 
-// --- AI Advisor ---
+// --- AI Advisor (AIアドバイザー機能) ---
 
 type AdviceRequest struct {
 	WeatherCode int     `json:"weather_code"`
@@ -195,6 +208,7 @@ type GeminiCandidate struct {
 	Content GeminiContent `json:"content"`
 }
 
+// getAdvice: 天気情報に基づいてAIからのアドバイスを取得する
 func getAdvice(c *gin.Context) {
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
@@ -230,7 +244,7 @@ func getAdvice(c *gin.Context) {
 	}
 
 	jsonData, _ := json.Marshal(geminiReq)
-	// Using gemini-flash-latest as it is the standard stable version
+	// Gemini APIのエンドポイント (gemini-flash-latest を使用)
 	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + apiKey
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
@@ -265,16 +279,18 @@ func getAdvice(c *gin.Context) {
 	}
 }
 
-// --- Main ---
+// --- Main (メイン関数) ---
 
 func main() {
+	// データベース接続初期化
 	initDB()
 
+	// Ginルーターの初期化
 	r := gin.Default()
 	
-	// Cors
+	// CORS設定: 異なるオリジン（フロントエンドなど）からのアクセスを許可
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"}, // For dev
+		AllowOrigins:     []string{"*"}, // 開発環境用のため全て許可。本番では制限すべき
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -282,6 +298,7 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// APIエンドポイントグループ
 	api := r.Group("/api")
 	{
 		api.GET("/events", getEvents)
@@ -294,12 +311,13 @@ func main() {
 		api.PUT("/memos/:id", updateMemo)
 		api.DELETE("/memos/:id", deleteMemo)
 
-		api.POST("/advice", getAdvice)
+		api.POST("/advice", getAdvice) // AIアドバイス取得
 
 		api.GET("/health", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		})
 	}
 
+	// サーバーをポート8080で起動
 	r.Run(":8080")
 }

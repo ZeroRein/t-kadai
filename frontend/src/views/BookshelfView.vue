@@ -4,9 +4,10 @@
       <h2>{{ $t("bookshelf.title") }}</h2>
     </div>
 
-    <!-- Bookshelf -->
+    <!-- 本棚エリア -->
     <div class="bookcase">
       <div class="shelf-row">
+        <!-- 既存のメモを本の背表紙として表示 -->
         <div
           v-for="memo in memos"
           :key="memo.ID"
@@ -23,7 +24,7 @@
           <div class="spine-decor bottom"></div>
         </div>
 
-        <!-- NEW MEMO BOOK -->
+        <!-- 新しいメモ作成用の「新しい本」 -->
         <div class="book-spine new-book" @click="openNewBook">
           <div class="spine-decor top"></div>
           <div class="spine-title">+</div>
@@ -33,18 +34,19 @@
       </div>
       <div class="shelf-plank"></div>
 
+      <!-- メモがない場合のメッセージ -->
       <div v-if="memos.length === 0" class="empty-shelf">
         {{ $t("bookshelf.empty") }}
       </div>
     </div>
 
+    <!-- 本が開いた状態のオーバーレイ -->
     <div v-if="selectedMemo" class="book-overlay" @click.self="closeBook">
       <div class="open-book-container">
         <div class="open-book">
-          <!-- STATIC RIGHT PAGE (Page 1, visible when cover opens) -->
+          <!-- 右ページ (静的): 本文の編集エリア -->
           <div class="page right-page">
             <div class="page-content">
-              <!-- Content for Right Page -->
               <textarea
                 v-model="editingContent"
                 class="handwritten-textarea"
@@ -59,9 +61,9 @@
             <div class="page-number">- 1 -</div>
           </div>
 
-          <!-- ANIMATING LEFT PAGE (front=Cover, back=InnerLeft) -->
+          <!-- アニメーションする左ページアセンブリ (表紙と左ページ) -->
           <div class="page left-page-assembly">
-            <!-- FRONT FACE: The Cover -->
+            <!-- 表面: 表紙デザイン -->
             <div class="face front-face" :style="getCoverStyle(selectedMemo)">
               <div class="cover-design">
                 <div class="spine-decor top"></div>
@@ -70,10 +72,10 @@
               </div>
             </div>
 
-            <!-- BACK FACE: The Inner Left Page -->
+            <!-- 裏面: 左ページ (タイトルや日付情報) -->
             <div class="face back-face">
               <div class="page-content">
-                <!-- Title Editable -->
+                <!-- 新規作成時はタイトル入力可能 -->
                 <div v-if="!selectedMemo.ID" class="new-title-input-wrapper">
                   <input
                     v-model="selectedMemo.Title"
@@ -112,10 +114,11 @@ import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
 const memos = ref<any[]>([]);
-const selectedMemo = ref<any>(null);
+const selectedMemo = ref<any>(null); // 現在開いているメモ
 
 const editingContent = ref("");
 
+// メモ一覧の取得
 async function fetchMemos() {
   try {
     const res = await axios.get("/api/memos");
@@ -125,7 +128,7 @@ async function fetchMemos() {
   }
 }
 
-// Visual randomization for books (Dark Antique Style)
+// 本の色パターン (アンティーク調)
 const COLORS = [
   "#212121", // Very Dark Grey
   "#3e2723", // Dark Brown
@@ -136,10 +139,10 @@ const COLORS = [
   "#2d241e", // Cocoa
 ];
 
+// 背表紙のスタイル生成 (色などをランダムに決定)
 function getBookStyle(memo: any) {
   const seed = (memo.ID || 0) + (memo.Title ? memo.Title.length : 0);
   const color = COLORS[seed % COLORS.length];
-  // Fixed size as requested
   const height = "140px";
   const width = "45px";
 
@@ -151,11 +154,13 @@ function getBookStyle(memo: any) {
   };
 }
 
+// 表紙のスタイル生成
 function getCoverStyle(memo: any) {
   if (!memo.ID && memo.Title === "New Memo") {
+    // 新規作成用の特別なスタイル (革のような質感)
     return {
       backgroundColor: "#5d4037",
-      backgroundImage: `url("https://www.transparenttextures.com/patterns/wood-pattern.png")`, // Leather texture feel
+      backgroundImage: `url("https://www.transparenttextures.com/patterns/wood-pattern.png")`,
       border: "2px solid #3e2723",
     };
   }
@@ -168,11 +173,13 @@ function getCoverStyle(memo: any) {
   };
 }
 
+// 本を開く処理
 function openBook(memo: any) {
-  selectedMemo.value = { ...memo }; // Clone to avoid direct mutation
+  selectedMemo.value = { ...memo }; // コピーを作成して直接変更を防ぐ
   editingContent.value = memo.Content;
 }
 
+// 新規メモ作成として本を開く処理
 function openNewBook() {
   selectedMemo.value = {
     Title: "New Memo",
@@ -182,26 +189,28 @@ function openNewBook() {
   editingContent.value = "";
 }
 
+// 本を閉じる処理
 function closeBook() {
   selectedMemo.value = null;
   editingContent.value = "";
 }
 
+// メモの保存処理
 async function saveMemo() {
   if (!selectedMemo.value) return;
 
   try {
-    // CREATE
+    // 新規作成 (IDがない場合)
     if (!selectedMemo.value.ID) {
       await axios.post("/api/memos", {
         Title: selectedMemo.value.Title,
         Content: editingContent.value,
-        // Default to today if new
+        // 新規の場合は今日の日付をデフォルトに
         LinkedDate: new Date().toISOString(),
         ThemeColor: "#8d6e63",
       });
     }
-    // UPDATE
+    // 更新
     else {
       await axios.put(`/api/memos/${selectedMemo.value.ID}`, {
         ...selectedMemo.value,
@@ -211,13 +220,14 @@ async function saveMemo() {
 
     alert("Saved!");
     closeBook();
-    fetchMemos();
+    fetchMemos(); // リストを再取得
   } catch (e) {
     console.error(e);
     alert("Failed to save");
   }
 }
 
+// 日付フォーマットヘルパー
 function formatDate(dateStr: string) {
   if (!dateStr) return "";
   return new Date(dateStr).toLocaleDateString();

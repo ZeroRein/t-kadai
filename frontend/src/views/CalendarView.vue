@@ -1,8 +1,10 @@
 <template>
   <div class="calendar-view">
     <div class="controls">
+      <!-- 現在の表示年月またはタイトル -->
       <h2>{{ currentTitle }}</h2>
       <div class="view-switcher">
+        <!-- 手帳ビューへの切り替えボタン -->
         <button
           class="btn"
           :class="{ active: viewMode === 'notebook' }"
@@ -10,6 +12,7 @@
         >
           {{ $t("calendar.notebook") }}
         </button>
+        <!-- カレンダービューへの切り替えボタン -->
         <button
           class="btn"
           :class="{ active: viewMode === 'calendar' }"
@@ -20,15 +23,17 @@
       </div>
     </div>
 
-    <!-- Custom Notebook View -->
+    <!-- 手帳（週間）ビューエリア -->
     <div v-if="viewMode === 'notebook'">
       <div class="notebook-nav">
+        <!-- 週の移動ナビゲーション -->
         <button class="btn sm" @click="addWeeks(-1)">&lt;</button>
         <button class="btn sm" @click="resetDate">
           {{ $t("calendar.today") }}
         </button>
         <button class="btn sm" @click="addWeeks(1)">&gt;</button>
       </div>
+      <!-- WeeklyNotebookコンポーネント: 週間スケジュールとメモを表示 -->
       <WeeklyNotebook
         :currentDate="notebookDate"
         :events="calendarEvents"
@@ -41,18 +46,19 @@
       />
     </div>
 
-    <!-- Standard FullCalendar (Wrapped for visual contrast) -->
+    <!-- 月間カレンダーエリア (FullCalendar) -->
     <div v-else class="calendar-paper">
       <FullCalendar ref="fullCalendar" :options="calendarOptions" />
     </div>
 
-    <!-- Simple Modal for creating Event/Memo -->
+    <!-- イベント/メモ作成・編集用モーダル -->
     <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
         <h3>
           {{ newEvent.type === "event" ? $t("modal.event") : $t("modal.memo") }}
         </h3>
 
+        <!-- タイプ選択 (予定 or メモ) -->
         <div style="margin-bottom: 10px">
           <label>{{ $t("modal.type") }}: </label>
           <select v-model="newEvent.type">
@@ -67,7 +73,7 @@
           style="display: block; width: 100%; margin-bottom: 10px; padding: 5px"
         />
 
-        <!-- Start/End Inputs for Events -->
+        <!-- 予定の場合の開始・終了時刻入力 -->
         <div
           v-if="newEvent.type === 'event'"
           style="margin-bottom: 10px; display: flex; gap: 10px"
@@ -111,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch, nextTick } from "vue";
+import { ref, reactive, onMounted, computed, nextTick } from "vue";
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -130,21 +136,25 @@ const newEvent = reactive({
   type: "event",
   start: "",
   end: "",
+  // note: ID is missing here for updates, simple create focused
 });
 
-// Separate state for Events and Memos
+// イベントとメモの状態管理
 const calendarEvents = ref<any[]>([]);
 const memoList = ref<any[]>([]);
+
+// FullCalendar表示用にイベントとメモをマージ
 const fullCalendarEvents = computed(() => [
   ...calendarEvents.value,
   ...memoList.value,
 ]);
 
+// ビューモード: 'notebook' (手帳) または 'calendar' (月間カレンダー)
 const viewMode = ref("notebook");
 const notebookDate = ref(new Date());
 const fullCalendar = ref(null);
 
-// Computed title
+// タイトルの計算 (手帳モード時は年月を表示)
 const currentTitle = computed(() => {
   if (viewMode.value === "notebook") {
     const d = notebookDate.value;
@@ -153,7 +163,7 @@ const currentTitle = computed(() => {
   return t("calendar.title");
 });
 
-// Navigation
+// 週ナビゲーション
 const addWeeks = (n: number) => {
   const d = new Date(notebookDate.value);
   d.setDate(d.getDate() + n * 7);
@@ -163,15 +173,16 @@ const resetDate = () => {
   notebookDate.value = new Date();
 };
 
-// Helpers for datetime-local format (YYYY-MM-DDTHH:mm)
+// datetime-local 形式への変換ヘルパー (YYYY-MM-DDTHH:mm)
 const toLocalISO = (d: Date) => {
   const offset = d.getTimezoneOffset() * 60000;
   const local = new Date(d.getTime() - offset);
   return local.toISOString().slice(0, 16);
 };
 
+// ノートブックでの日付クリックハンドラ
 const handleNotebookDateClick = (dateStr: string) => {
-  // Default 9am - 10am for day clicks
+  // デフォルトで9時から10時を設定
   const d = new Date(dateStr);
   d.setHours(9, 0, 0, 0);
   const end = new Date(d);
@@ -186,10 +197,11 @@ const handleNotebookDateClick = (dateStr: string) => {
   showModal.value = true;
 };
 
+// ノートブックでの時間枠クリックハンドラ
 const handleNotebookTimeClick = (isoDateStr: string) => {
   const d = new Date(isoDateStr);
   const end = new Date(d);
-  end.setHours(end.getHours() + 1); // Default 1 hour duration
+  end.setHours(end.getHours() + 1); // 1時間枠
 
   selectedDate.value = isoDateStr;
   newEvent.title = "";
@@ -200,6 +212,7 @@ const handleNotebookTimeClick = (isoDateStr: string) => {
   showModal.value = true;
 };
 
+// ノートブックでのメモクリックハンドラ
 const handleNotebookMemoClick = (dateStr: string) => {
   const d = new Date(dateStr);
   d.setHours(9, 0, 0, 0);
@@ -207,37 +220,37 @@ const handleNotebookMemoClick = (dateStr: string) => {
   selectedDate.value = dateStr;
   newEvent.title = "";
   newEvent.content = "";
-  newEvent.type = "memo"; // Default to Memo
+  newEvent.type = "memo"; // デフォルトでメモを選択
   newEvent.start = toLocalISO(d);
   newEvent.end = "";
   showModal.value = true;
 };
 
+// クイックメモ作成ハンドラ
 const handleCreateMemo = async (payload: { date: string; content: string }) => {
   try {
     await axios.post("/api/memos", {
-      Title: payload.content, // Use content as title for quick memos
+      Title: payload.content, // クイックメモでは内容をタイトルとして使用
       Content: payload.content,
       LinkedDate: new Date(payload.date).toISOString(),
       ThemeColor: "#ffba00",
     });
-    fetchData();
+    fetchData(); // リストを更新
   } catch (e) {
     console.error(e);
     alert("Failed to save memo");
   }
 };
 
+// メモ更新ハンドラ
 const handleUpdateMemo = async (payload: {
   id: number;
   content: string;
   date: string;
 }) => {
   try {
-    // Fetch existing first to get full object? Or just PATCH.
-    // Assuming we need to send full object for now or backend supports partial.
-    // Let's rely on finding it in our local list first to be safe, or just PUT.
-    // Actually PUT /api/memos/:id typically expects full object.
+    // 既存のメモを探して更新 (PUT)
+    // 本来はIDで取得して更新するのが確実ですが、ここではリストから検索
     const memo = memoList.value.find((m) => m.id === payload.id);
     if (memo) {
       await axios.put(`/api/memos/${payload.id}`, {
@@ -254,8 +267,10 @@ const handleUpdateMemo = async (payload: {
   }
 };
 
+// ビュー切り替え
 const switchView = (mode: string) => {
   viewMode.value = mode;
+  // FullCalendarのサイズ再計算
   if (mode === "calendar") {
     nextTick(() => {
       if (fullCalendar.value) (fullCalendar.value as any).getApi().updateSize();
@@ -263,7 +278,7 @@ const switchView = (mode: string) => {
   }
 };
 
-// Calendar Options (FullCalendar)
+// FullCalendarの設定
 const calendarOptions = reactive({
   plugins: [dayGridPlugin, interactionPlugin],
   initialView: "dayGridMonth",
@@ -292,6 +307,7 @@ function closeModal() {
   showModal.value = false;
 }
 
+// アイテム（予定/メモ）の保存
 async function saveItem() {
   if (newEvent.type === "event") {
     await axios.post("/api/events", {
@@ -302,7 +318,7 @@ async function saveItem() {
       Color: "#4a90e2",
     });
   } else {
-    // Memo
+    // メモ
     await axios.post("/api/memos", {
       Title: newEvent.title,
       Content: newEvent.content,
@@ -314,6 +330,7 @@ async function saveItem() {
   fetchData();
 }
 
+// データ取得 (予定とメモを並列で取得)
 async function fetchData() {
   try {
     const [evRes, memoRes] = await Promise.all([
@@ -321,6 +338,7 @@ async function fetchData() {
       axios.get("/api/memos"),
     ]);
 
+    // カレンダー用イベント形式に変換
     calendarEvents.value = evRes.data.map((e: any) => ({
       id: e.ID,
       title: e.Title,
@@ -329,6 +347,7 @@ async function fetchData() {
       extendedProps: { description: e.Description },
     }));
 
+    // メモをカレンダーイベント形式に変換 (日付があるもの)
     memoList.value = memoRes.data
       .filter((m: any) => m.LinkedDate)
       .map((m: any) => ({

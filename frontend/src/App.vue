@@ -5,17 +5,21 @@
       <span class="logo-text">Calendar</span>
     </div>
     <nav>
+      <!-- ナビゲーションリンク: カレンダーと本棚への遷移 -->
       <router-link to="/calendar">{{ $t("nav.calendar") }}</router-link>
       <router-link to="/bookshelf">{{ $t("nav.bookshelf") }}</router-link>
     </nav>
     <div class="header-actions">
+      <!-- ホームボタン -->
       <router-link to="/" class="btn home-btn"
         >🏠 {{ $t("nav.home") }}</router-link
       >
+      <!-- 言語切り替えボタン -->
       <button @click="toggleLang" class="btn">{{ $t("nav.lang") }}</button>
     </div>
   </header>
   <main>
+    <!-- router-view: 現在のルートに応じたコンポーネントがここに表示されます -->
     <router-view />
   </main>
 </template>
@@ -25,6 +29,7 @@ import { useI18n } from "vue-i18n";
 
 const { t, locale } = useI18n();
 
+// 言語切り替え関数: 英語(en)と日本語(ja)をトグルします
 const toggleLang = () => {
   locale.value = locale.value === "en" ? "ja" : "en";
 };

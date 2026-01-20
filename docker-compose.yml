@@ -1,72 +1,61 @@
 version: "3.8"
 
 services:
+  # データベースサービス (PostgreSQL)
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: calendar_db
+      POSTGRES_USER: user             # データベースユーザー名
+      POSTGRES_PASSWORD: password     # データベースパスワード
+      POSTGRES_DB: calendar_db        # 作成するデータベース名
     volumes:
-      - ./db-data:/var/lib/postgresql/data
-      - ./backend/db/initial.sql:/docker-entrypoint-initdb.d/initial.sql
+      - ./db-data:/var/lib/postgresql/data # データの永続化
+      - ./backend/db/initial.sql:/docker-entrypoint-initdb.d/initial.sql # 初期化SQL
     ports:
-      - "5432:5432"
+      - "5432:5432" # ホスト:コンテナのポートマッピング
     restart: always
 
+  # バックエンドAPIサービス (Go)
   app:
     build:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgres://user:password@db:5432/calendar_db?sslmode=disable
+      DATABASE_URL: postgres://user:password@db:5432/calendar_db?sslmode=disable # DB接続文字列
       PORT: 8080
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY} # 環境変数からAPIキーを取得
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      - db # dbサービスが起動してから起動
     restart: always
 
-  # Frontend service for development (using Vite dev server) or build integration
-  # For this setup, we'll try to build frontend and serve via nginx,
-  # or running it as a dev server proxied by nginx.
-  # Given the prompt implies immediate usability, a dev server is easier for iteration.
-  # But the README architecture shows Nginx -> App. It doesn't explicitly show a Node container.
-  # To match "App Container (Go)" serving everything or Nginx serving static,
-  # I will stick to Nginx serving static files built from frontend.
-  # So I will add a build stage in frontend or just mount the dist.
-  # For now, let's keep frontend as a separate service for development if needed,
-  # but strictly following the README, likely Nginx serves frontend assets.
-
-  # For Development, running frontend separately is better.
+  # フロントエンド開発サーバー (Vite)
+  # 開発時はこのコンテナでホットリロードなどを利用します。
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     volumes:
-      - ./frontend/src:/app/src
+      - ./frontend/src:/app/src # ソースコードをマウントして変更を即座に反映
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=https://localhost/api
+      - VITE_API_URL=https://localhost/api # APIのエンドポイント設定
     depends_on:
       - app
 
+  # リバースプロキシ (Nginx)
+  # HTTPS終端と静的ファイルの配信、APIリクエストの転送を行います。
   nginx:
     build:
       context: .
       dockerfile: nginx/Dockerfile
     ports:
-      - "80:80"
-      - "443:443"
+      - "80:80"   # HTTP
+      - "443:443" # HTTPS
     volumes:
-      - ./nginx/certs:/etc/nginx/certs
-      # Mount frontend dist if we were building it.
-      # For dev, we might verify connection to frontend container?
-      # The README says Nginx -> App (Go).
-      # If Go app only provides API, who serves HTML? Nginx.
-      # So Nginx needs access to frontend build artifacts.
+      - ./nginx/certs:/etc/nginx/certs # SSL証明書のマウント
     depends_on:
       - app
       - frontend
