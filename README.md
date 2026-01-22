@@ -52,8 +52,6 @@ docker-compose up -d --build
 
 ### 3. フロントエンドの起動 (開発モード)
 
-本環境は開発用セットアップのため、フロントエンドはローカルで実行します：
-
 ```bash
 cd frontend
 npm install  # 初回のみ依存関係をインストール
@@ -63,7 +61,7 @@ npm run dev
 ### 4. アプリへのアクセス
 
 ブラウザを開き、以下のアドレスにアクセスしてください：
-**http://localhost:5174**
+https://localhost
 
 ---
 
