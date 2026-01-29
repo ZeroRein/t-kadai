@@ -25,7 +25,7 @@ docker-compose up -d --build
 - Goバックエンドサーバー (`moku-app`) のビルドと起動
 - PostgreSQLデータベース (`moku-db`) の起動
 
-### 3. フロントエンドの起動 (開発モード)
+### 3. フロントエンドの起動 (開発モード)やらなくても起動できる
 
 ```bash
 cd frontend
